@@ -12,6 +12,7 @@ import { ChangeOrderStatusDto } from './dto/change-order-status.dto';
 import { SERVICES } from 'src/config';
 import { firstValueFrom } from 'rxjs';
 import { OrderWithProducts } from './interfaces/order-with-products.interface';
+import { url } from 'inspector';
 
 @Injectable()
 export class OrdersService extends PrismaClient implements OnModuleInit {
@@ -178,18 +179,21 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
   async createPaymentSession(order: OrderWithProducts) {
     const paymentSession = await firstValueFrom(
-      this.client.send({ cmd: 'create.payment.session' }, {
+      this.client.send('create.payment.session', {
         orderId: order.id,
         currency: 'usd',
-        items: [
-          {
-            name: 'Order',
-            price:  100,
-            quantity: 1,
-          }
-        ]
+        items: order.orderItem.map((orderItem) => ({
+            name: orderItem.name,
+            price: orderItem.price,
+            quantity: orderItem.quantity,
+          })
+        )
       }),
     );
-    return paymentSession;
+    return {
+      cancel_url: paymentSession.cancel_url,
+      success_url: paymentSession.success_url,
+      url: paymentSession.url,
+    };
   }
 }
