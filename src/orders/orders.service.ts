@@ -11,6 +11,7 @@ import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { ChangeOrderStatusDto } from './dto/change-order-status.dto';
 import { SERVICES } from 'src/config';
 import { firstValueFrom } from 'rxjs';
+import { OrderWithProducts } from './interfaces/order-with-products.interface';
 
 @Injectable()
 export class OrdersService extends PrismaClient implements OnModuleInit {
@@ -18,7 +19,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
   constructor(
     @Inject(SERVICES.NATS_SERVICE)
-    private readonly productClient: ClientProxy,
+    private readonly client: ClientProxy,
   ) {
     super();
   }
@@ -35,7 +36,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
       // TODO: If the products ids not exists, throw an error
       // check why this throw an error unhandled
       const products = await firstValueFrom(
-        this.productClient.send({ cmd: 'validate_products' }, { ids: productsIds }),
+        this.client.send({ cmd: 'validate_products' }, { ids: productsIds }),
       );
 
       const details = createOrderDto.items.map( orderItem => {
@@ -139,7 +140,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
 
     const productIds = order.orderItem.map((orderItem) => orderItem.productId);
     const products: any[] = await firstValueFrom(
-      this.productClient.send({ cmd: 'validate_products' }, { ids: productIds, available: false }),
+      this.client.send({ cmd: 'validate_products' }, { ids: productIds, available: false }),
     ).catch((err) => {
       throw new RpcException(err);
     });
@@ -173,5 +174,22 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
       where: { id },
       data: { status },
     });
+  }
+
+  async createPaymentSession(order: OrderWithProducts) {
+    const paymentSession = await firstValueFrom(
+      this.client.send({ cmd: 'create.payment.session' }, {
+        orderId: order.id,
+        currency: 'usd',
+        items: [
+          {
+            name: 'Order',
+            price:  100,
+            quantity: 1,
+          }
+        ]
+      }),
+    );
+    return paymentSession;
   }
 }
