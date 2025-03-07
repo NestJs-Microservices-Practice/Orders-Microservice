@@ -1,7 +1,7 @@
 import { Controller, ParseUUIDPipe } from '@nestjs/common';
-import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import { EventPattern, MessagePattern, Payload, RpcException } from '@nestjs/microservices';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto, PaginationOrderDto } from './dto';
+import { CreateOrderDto, PaginationOrderDto, PaidOrderDto } from './dto';
 import { ChangeOrderStatusDto } from './dto/change-order-status.dto';
 
 
@@ -33,5 +33,10 @@ export class OrdersController {
   @MessagePattern('changeOrderStatus')
   async changeOrderStatus(@Payload() changeOrderStatusDto: ChangeOrderStatusDto){
     return await this.ordersService.changeOrderStatus(changeOrderStatusDto);
+  }
+
+  @EventPattern('payment.succeeded')
+  paidOrder(@Payload() paidOrderDto: PaidOrderDto) {
+    return this.ordersService.paidOrder(paidOrderDto);
   }
 }
